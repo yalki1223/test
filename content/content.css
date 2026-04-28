@@ -1,0 +1,29 @@
+/* Twitch Custom Themes — minimal hardening CSS injected on every Twitch page.
+ * Heavy lifting happens via the dynamically-built <style id="twitch-themes-style">.
+ */
+
+#twitch-themes-page-bg {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: -2 !important;
+  pointer-events: none !important;
+}
+
+#twitch-themes-chat-bg {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Make sure chat content stays above the chat overlay. */
+.chat-shell .chat-list,
+.chat-shell .chat-input,
+.chat-shell .chat-room__content,
+.chat-shell .stream-chat-header,
+section[data-test-selector="chat-room-component-layout"] > * {
+  position: relative;
+  z-index: 1;
+}

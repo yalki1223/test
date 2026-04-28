@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=720" />
+  <title>Twitch Custom Themes</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <div>
+        <div class="logo-title">Twitch Custom Themes</div>
+        <div class="logo-sub">Полная кастомизация Twitch</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <label class="switch" title="Включить/выключить тему">
+        <input type="checkbox" id="theme-toggle" checked />
+        <span class="slider"></span>
+      </label>
+      <button class="btn-ghost" id="open-twitch-btn" title="Открыть Twitch">⤴</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab tab-active" data-tab="presets">Темы</button>
+    <button class="tab" data-tab="customs">Мои темы</button>
+    <button class="tab" data-tab="editor">Редактор</button>
+    <button class="tab" data-tab="help">Помощь</button>
+  </nav>
+
+  <main>
+    <!-- ========== PRESETS ========== -->
+    <section class="tab-content tab-content-active" data-tab="presets">
+      <div class="filter-bar">
+        <input type="search" id="preset-search" placeholder="Поиск темы..." />
+        <div class="filter-chips">
+          <button class="chip chip-active" data-filter="all">Все</button>
+          <button class="chip" data-filter="dark">Тёмные</button>
+          <button class="chip" data-filter="light">Светлые</button>
+          <button class="chip" data-filter="special">Специальные</button>
+        </div>
+      </div>
+      <div class="theme-grid" id="preset-grid"></div>
+    </section>
+
+    <!-- ========== MY THEMES ========== -->
+    <section class="tab-content" data-tab="customs">
+      <div class="row-between">
+        <div class="muted">Сохранённые кастомные темы</div>
+        <div class="row-gap">
+          <button class="btn" id="new-custom-btn">+ Новая тема</button>
+          <button class="btn-ghost" id="import-btn">Импорт JSON</button>
+          <input type="file" id="import-file" accept="application/json" hidden />
+        </div>
+      </div>
+      <div class="theme-grid" id="custom-grid">
+        <div class="empty-state" id="custom-empty">
+          У тебя пока нет своих тем. Создай новую или скопируй существующий пресет.
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== EDITOR ========== -->
+    <section class="tab-content" data-tab="editor">
+      <div class="editor-toolbar">
+        <input type="text" id="ed-name" placeholder="Название темы" />
+        <div class="row-gap">
+          <button class="btn-ghost" id="ed-from-preset">⟲ Из пресета</button>
+          <button class="btn-ghost" id="ed-export">⤓ Экспорт JSON</button>
+          <button class="btn" id="ed-save">Сохранить</button>
+          <button class="btn-primary" id="ed-apply">Применить</button>
+        </div>
+      </div>
+
+      <details open>
+        <summary>Базовые цвета</summary>
+        <div class="grid-2">
+          <label>Фон тела (body)<input type="color" data-var="--color-background-body" /></label>
+          <label>Фон базы<input type="color" data-var="--color-background-base" /></label>
+          <label>Фон alt<input type="color" data-var="--color-background-alt" /></label>
+          <label>Фон alt-2<input type="color" data-var="--color-background-alt-2" /></label>
+          <label>Текст<input type="color" data-var="--color-text-base" /></label>
+          <label>Текст alt<input type="color" data-var="--color-text-alt" /></label>
+          <label>Ссылки<input type="color" data-var="--color-text-link" /></label>
+          <label>Граница<input type="color" data-var="--color-border-base" /></label>
+          <label>Кнопка primary<input type="color" data-var="--color-background-button-primary-default" /></label>
+          <label>Акцент (extension)<input type="color" data-effect="accent" /></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Фон сайта</summary>
+        <div data-layer="pageBackground"></div>
+      </details>
+
+      <details>
+        <summary>Фон чата</summary>
+        <div data-layer="chatBackground"></div>
+      </details>
+
+      <details>
+        <summary>Фон левой панели</summary>
+        <div data-layer="sidebarBackground"></div>
+      </details>
+
+      <details>
+        <summary>Фон верхней панели</summary>
+        <div data-layer="topbarBackground"></div>
+      </details>
+
+      <details>
+        <summary>Сообщения чата</summary>
+        <div class="grid-2">
+          <label>Фон сообщения<input type="color" data-chat="messageBgColor" /></label>
+          <label>Цвет текста<input type="color" data-chat="textColor" /></label>
+          <label>Шрифт (CSS family)<input type="text" data-chat="fontFamily" placeholder="напр. 'Inter', sans-serif" /></label>
+          <label>Размер шрифта (px)<input type="number" data-chat="fontSize" min="0" max="32" step="1" /></label>
+          <label>Скруглить углы (px)<input type="number" data-chat="borderRadius" min="0" max="32" step="1" /></label>
+          <label>Обводка текста<input type="checkbox" data-chat="outline" /></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Эффекты</summary>
+        <div class="grid-2">
+          <label>Свечение чата<input type="checkbox" data-effect-bool="chatGlow" /></label>
+          <label>Скруглить весь UI<input type="checkbox" data-effect-bool="roundedUI" /></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Кастомный CSS (продвинутый)</summary>
+        <textarea id="ed-customCSS" rows="6" placeholder="/* Любой свой CSS — будет добавлен в тему */"></textarea>
+      </details>
+
+      <div class="muted small">Все изменения сразу применяются к вкладке Twitch для предпросмотра. «Сохранить» добавит тему в «Мои темы», «Применить» закрепит её как активную.</div>
+    </section>
+
+    <!-- ========== HELP ========== -->
+    <section class="tab-content" data-tab="help">
+      <h3>Как пользоваться</h3>
+      <ol>
+        <li>Открой <a href="https://www.twitch.tv" target="_blank">twitch.tv</a> и оставь вкладку открытой.</li>
+        <li>Выбери одну из готовых тем во вкладке <b>Темы</b> — нажми «Применить».</li>
+        <li>В <b>Редакторе</b> можно собрать свою тему: цвета, фоны, картинки, гифки, эффекты. Превью обновляется в реальном времени.</li>
+        <li>Для фона можно загрузить любую картинку или GIF — она встроится в тему. Регулируй размер, позицию и блюр.</li>
+        <li>Сохранённые темы можно экспортировать в JSON и делиться ими.</li>
+      </ol>
+      <h3>Если что-то выглядит странно</h3>
+      <ul>
+        <li>Twitch иногда обновляет вёрстку — нажми «Применить» снова или обнови страницу.</li>
+        <li>Очень тяжёлые гифки могут тормозить чат — попробуй уменьшить размер или прозрачность.</li>
+        <li>Кнопка-выключатель сверху моментально снимает тему, не удаляя её.</li>
+      </ul>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Theme engine + presets, loaded as plain scripts so the popup can build/preview themes -->
+  <script src="../lib/theme-engine.js"></script>
+  <script src="../themes/presets.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
