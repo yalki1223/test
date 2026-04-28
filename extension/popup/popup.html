@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Friends Listening</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span>Friends Listening</span>
+    </div>
+    <div class="me" id="me-summary">
+      <span class="muted">не подключён</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="friends" role="tab">Друзья</button>
+    <button class="tab" data-tab="requests" role="tab">
+      Заявки <span class="tab-badge" id="req-badge" hidden>0</span>
+    </button>
+    <button class="tab" data-tab="add" role="tab">Добавить</button>
+    <button class="tab" data-tab="settings" role="tab">Настройки</button>
+  </nav>
+
+  <main>
+    <!-- ============ FRIENDS ============ -->
+    <section class="panel active" data-panel="friends">
+      <div class="panel-head">
+        <h2>Друзья онлайн</h2>
+        <button class="ghost" id="friends-refresh" title="Обновить">↻</button>
+      </div>
+      <ul class="list" id="friends-list">
+        <li class="empty">Загрузка…</li>
+      </ul>
+    </section>
+
+    <!-- ============ REQUESTS ============ -->
+    <section class="panel" data-panel="requests">
+      <div class="panel-head">
+        <h2>Входящие</h2>
+      </div>
+      <ul class="list" id="incoming-list"></ul>
+      <div class="panel-head">
+        <h2>Исходящие</h2>
+      </div>
+      <ul class="list" id="outgoing-list"></ul>
+    </section>
+
+    <!-- ============ ADD FRIEND ============ -->
+    <section class="panel" data-panel="add">
+      <div class="panel-head"><h2>Добавить друга</h2></div>
+      <p class="hint">Заявка отправится пользователю — он сам её подтвердит или отклонит. Подписки SoundCloud не добавляются автоматически.</p>
+      <div class="row">
+        <input type="text" id="add-input" placeholder="ник пользователя" autocomplete="off" />
+        <button class="primary" id="add-submit">Отправить</button>
+      </div>
+      <div id="search-results" class="list compact"></div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="panel" data-panel="settings">
+      <div class="panel-head"><h2>Настройки</h2></div>
+
+      <div class="field">
+        <label for="server-input">Локальный сервер</label>
+        <div class="row">
+          <input type="text" id="server-input" placeholder="http://127.0.0.1:8765" />
+          <button class="primary" id="server-save">Сохранить</button>
+        </div>
+        <p class="hint" id="server-hint">…</p>
+      </div>
+
+      <div class="field" id="register-block">
+        <label for="username-input">Твой ник</label>
+        <div class="row">
+          <input type="text" id="username-input" placeholder="придумай ник" minlength="2" maxlength="40" />
+          <button class="primary" id="register-btn">Зарегистрировать</button>
+        </div>
+        <p class="hint">Ник видят твои друзья. Нужно ввести один раз.</p>
+      </div>
+
+      <div class="field" id="account-block" hidden>
+        <label>Аккаунт</label>
+        <div class="account-row">
+          <div class="account-info">
+            <div class="account-name" id="account-name"></div>
+            <div class="account-token" id="account-token"></div>
+          </div>
+          <button class="danger" id="logout-btn">Выйти</button>
+        </div>
+      </div>
+
+      <p class="footer-hint">v1.0.0 · все данные хранятся на твоём локальном сервере.</p>
+    </section>
+  </main>
+
+  <div id="toast" hidden></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

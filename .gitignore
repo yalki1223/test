@@ -1,0 +1,14 @@
+# Python
+server/.venv/
+server/__pycache__/
+server/*.pyc
+server/data.db
+server/data.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
