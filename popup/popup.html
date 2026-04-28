@@ -68,72 +68,78 @@
       <div class="editor-toolbar">
         <input type="text" id="ed-name" placeholder="Название темы" />
         <div class="row-gap">
-          <button class="btn-ghost" id="ed-from-preset">⟲ Из пресета</button>
-          <button class="btn-ghost" id="ed-export">⤓ Экспорт JSON</button>
-          <button class="btn" id="ed-save">Сохранить</button>
-          <button class="btn-primary" id="ed-apply">Применить</button>
+          <button class="btn-ghost" id="ed-from-preset" title="Загрузить значения из готового пресета">⟲ Из пресета</button>
+          <button class="btn-ghost" id="ed-export" title="Скачать тему как JSON-файл">⤓ Экспорт JSON</button>
+          <button class="btn" id="ed-save" title="Сохранить в «Мои темы»">Сохранить</button>
+          <button class="btn-primary" id="ed-apply" title="Сохранить и сразу применить на Twitch">Применить</button>
         </div>
+      </div>
+
+      <div class="muted small editor-hint">
+        Наведи на <span class="info-badge-inline">i</span> рядом с любым пунктом — увидишь, что именно он меняет.
       </div>
 
       <details open>
         <summary>Базовые цвета</summary>
         <div class="grid-2">
-          <label>Фон тела (body)<input type="color" data-var="--color-background-body" /></label>
-          <label>Фон базы<input type="color" data-var="--color-background-base" /></label>
-          <label>Фон alt<input type="color" data-var="--color-background-alt" /></label>
-          <label>Фон alt-2<input type="color" data-var="--color-background-alt-2" /></label>
-          <label>Текст<input type="color" data-var="--color-text-base" /></label>
-          <label>Текст alt<input type="color" data-var="--color-text-alt" /></label>
-          <label>Ссылки<input type="color" data-var="--color-text-link" /></label>
-          <label>Граница<input type="color" data-var="--color-border-base" /></label>
-          <label>Кнопка primary<input type="color" data-var="--color-background-button-primary-default" /></label>
-          <label>Акцент (extension)<input type="color" data-effect="accent" /></label>
+          <label data-info="var:body"><span class="lab">Фон тела (body)</span><input type="color" data-var="--color-background-body" /></label>
+          <label data-info="var:base"><span class="lab">Фон базы (карточки)</span><input type="color" data-var="--color-background-base" /></label>
+          <label data-info="var:alt"><span class="lab">Фон alt</span><input type="color" data-var="--color-background-alt" /></label>
+          <label data-info="var:alt2"><span class="lab">Фон alt-2</span><input type="color" data-var="--color-background-alt-2" /></label>
+          <label data-info="var:text"><span class="lab">Цвет текста</span><input type="color" data-var="--color-text-base" /></label>
+          <label data-info="var:textAlt"><span class="lab">Текст alt</span><input type="color" data-var="--color-text-alt" /></label>
+          <label data-info="var:link"><span class="lab">Ссылки / ники</span><input type="color" data-var="--color-text-link" /></label>
+          <label data-info="var:border"><span class="lab">Граница</span><input type="color" data-var="--color-border-base" /></label>
+          <label data-info="var:button"><span class="lab">Кнопка primary</span><input type="color" data-var="--color-background-button-primary-default" /></label>
+          <label data-info="var:accent"><span class="lab">Акцент (Follow и т.п.)</span><input type="color" data-effect="accent" /></label>
         </div>
       </details>
 
       <details>
         <summary>Фон сайта</summary>
-        <div data-layer="pageBackground"></div>
+        <div data-layer="pageBackground" data-region="page"></div>
       </details>
 
       <details>
         <summary>Фон чата</summary>
-        <div data-layer="chatBackground"></div>
+        <div data-layer="chatBackground" data-region="chat"></div>
       </details>
 
       <details>
         <summary>Фон левой панели</summary>
-        <div data-layer="sidebarBackground"></div>
+        <div data-layer="sidebarBackground" data-region="sidebar"></div>
       </details>
 
       <details>
         <summary>Фон верхней панели</summary>
-        <div data-layer="topbarBackground"></div>
+        <div data-layer="topbarBackground" data-region="topbar"></div>
       </details>
 
       <details>
         <summary>Сообщения чата</summary>
         <div class="grid-2">
-          <label>Фон сообщения<input type="color" data-chat="messageBgColor" /></label>
-          <label>Цвет текста<input type="color" data-chat="textColor" /></label>
-          <label>Шрифт (CSS family)<input type="text" data-chat="fontFamily" placeholder="напр. 'Inter', sans-serif" /></label>
-          <label>Размер шрифта (px)<input type="number" data-chat="fontSize" min="0" max="32" step="1" /></label>
-          <label>Скруглить углы (px)<input type="number" data-chat="borderRadius" min="0" max="32" step="1" /></label>
-          <label>Обводка текста<input type="checkbox" data-chat="outline" /></label>
+          <label data-info="chat:messageBgColor"><span class="lab">Фон сообщения</span><input type="color" data-chat="messageBgColor" /></label>
+          <label data-info="chat:textColor"><span class="lab">Цвет текста</span><input type="color" data-chat="textColor" /></label>
+          <label data-info="chat:fontFamily"><span class="lab">Шрифт (CSS family)</span><input type="text" data-chat="fontFamily" placeholder="напр. 'Inter', sans-serif" /></label>
+          <label data-info="chat:fontSize"><span class="lab">Размер шрифта (px)</span><input type="number" data-chat="fontSize" min="0" max="32" step="1" /></label>
+          <label data-info="chat:borderRadius"><span class="lab">Скруглить углы (px)</span><input type="number" data-chat="borderRadius" min="0" max="32" step="1" /></label>
+          <label data-info="chat:outline"><span class="lab">Обводка текста</span><input type="checkbox" data-chat="outline" /></label>
         </div>
       </details>
 
       <details>
         <summary>Эффекты</summary>
         <div class="grid-2">
-          <label>Свечение чата<input type="checkbox" data-effect-bool="chatGlow" /></label>
-          <label>Скруглить весь UI<input type="checkbox" data-effect-bool="roundedUI" /></label>
+          <label data-info="fx:chatGlow"><span class="lab">Свечение чата</span><input type="checkbox" data-effect-bool="chatGlow" /></label>
+          <label data-info="fx:roundedUI"><span class="lab">Скруглить весь UI</span><input type="checkbox" data-effect-bool="roundedUI" /></label>
         </div>
       </details>
 
       <details>
         <summary>Кастомный CSS (продвинутый)</summary>
-        <textarea id="ed-customCSS" rows="6" placeholder="/* Любой свой CSS — будет добавлен в тему */"></textarea>
+        <div data-info="customCSS" class="custom-css-wrap">
+          <textarea id="ed-customCSS" rows="6" placeholder="/* Любой свой CSS — будет добавлен в тему */"></textarea>
+        </div>
       </details>
 
       <div class="muted small">Все изменения сразу применяются к вкладке Twitch для предпросмотра. «Сохранить» добавит тему в «Мои темы», «Применить» закрепит её как активную.</div>
@@ -146,6 +152,7 @@
         <li>Открой <a href="https://www.twitch.tv" target="_blank">twitch.tv</a> и оставь вкладку открытой.</li>
         <li>Выбери одну из готовых тем во вкладке <b>Темы</b> — нажми «Применить».</li>
         <li>В <b>Редакторе</b> можно собрать свою тему: цвета, фоны, картинки, гифки, эффекты. Превью обновляется в реальном времени.</li>
+        <li>Наведи на иконку <b>(i)</b> рядом с любым полем — появится подсказка с мини-превью того, что именно поменяется.</li>
         <li>Для фона можно загрузить любую картинку или GIF — она встроится в тему. Регулируй размер, позицию и блюр.</li>
         <li>Сохранённые темы можно экспортировать в JSON и делиться ими.</li>
       </ol>
@@ -159,6 +166,7 @@
   </main>
 
   <div id="toast" class="toast"></div>
+  <div id="info-tooltip" class="info-tooltip" role="tooltip" aria-hidden="true"></div>
 
   <!-- Theme engine + presets, loaded as plain scripts so the popup can build/preview themes -->
   <script src="../lib/theme-engine.js"></script>
