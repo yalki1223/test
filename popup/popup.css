@@ -156,7 +156,10 @@ details[open] summary { margin-bottom: 8px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .grid-2 > label, .layer-form > label {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 12px; gap: 8px; padding: 4px 0;
+  font-size: 12px; gap: 8px; padding: 4px 0; position: relative;
+}
+.grid-2 > label .lab, .layer-form > label .lab {
+  flex: 1; display: flex; align-items: center; gap: 6px;
 }
 .grid-2 input[type="color"], .layer-form input[type="color"] {
   width: 36px; height: 24px; border: 1px solid var(--border); background: transparent; padding: 0;
@@ -224,3 +227,97 @@ section[data-tab="help"] a { color: var(--accent); }
 main::-webkit-scrollbar { width: 8px; }
 main::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 4px; }
 main::-webkit-scrollbar-track { background: transparent; }
+
+/* ----- Editor hint + info icons ----- */
+.editor-hint {
+  display: flex; align-items: center; gap: 6px;
+  margin: -4px 0 10px; padding: 6px 10px;
+  background: rgba(145, 71, 255, 0.08);
+  border: 1px solid rgba(145, 71, 255, 0.25);
+  border-radius: 8px;
+}
+.info-badge-inline {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 700; font-style: normal;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+}
+.info-btn {
+  width: 16px; height: 16px; flex: none;
+  border-radius: 50%; border: 1px solid rgba(145, 71, 255, 0.5);
+  background: rgba(145, 71, 255, 0.15);
+  color: var(--accent);
+  font-size: 10px; font-weight: 700; line-height: 1;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  cursor: help; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+.info-btn:hover, .info-btn:focus-visible {
+  background: var(--accent); color: #fff; transform: scale(1.08);
+  outline: none;
+}
+summary .info-btn {
+  margin-left: 6px; vertical-align: middle;
+}
+.custom-css-wrap { position: relative; }
+
+/* ----- Floating info tooltip ----- */
+.info-tooltip {
+  position: fixed; z-index: 99999;
+  width: 260px; padding: 10px 12px;
+  background: #14141a; color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(145, 71, 255, 0.25);
+  font-size: 12px; line-height: 1.45;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+.info-tooltip.show {
+  opacity: 1; visibility: visible; transform: translateY(0);
+}
+.info-tooltip .tt-title {
+  font-weight: 700; font-size: 12px; margin-bottom: 4px; color: #fff;
+}
+.info-tooltip .tt-desc {
+  color: var(--text-dim); margin-bottom: 8px;
+}
+.info-tooltip .tt-illu {
+  width: 100%; height: 110px; border-radius: 6px;
+  background: #0a0a0d; border: 1px solid var(--border);
+  display: block; overflow: hidden;
+}
+.info-tooltip .tt-illu svg { display: block; width: 100%; height: 100%; }
+.info-tooltip .tt-arrow {
+  position: absolute; width: 10px; height: 10px;
+  background: #14141a; border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+.info-tooltip[data-arrow="bottom"] .tt-arrow {
+  bottom: -6px; left: 14px; transform: rotate(225deg);
+}
+.info-tooltip[data-arrow="top"] .tt-arrow {
+  top: -6px; left: 14px;
+}
+.info-tooltip[data-arrow="right"] .tt-arrow {
+  right: -6px; top: 14px; transform: rotate(135deg);
+}
+.info-tooltip[data-arrow="left"] .tt-arrow {
+  left: -6px; top: 14px; transform: rotate(-45deg);
+}
+
+/* Better range slider value display */
+.range-val {
+  display: inline-block; min-width: 36px; text-align: right;
+  color: var(--text-dim); font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+/* Prevent layer form labels from cutting off when an info button is added. */
+.layer-form > label > .lab { flex: 1 1 auto; min-width: 0; }
+.layer-form > label > input[type="range"] { flex: none; }

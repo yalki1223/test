@@ -11,6 +11,565 @@
   const STORAGE_CUSTOMS = 'tt:customs';
   const STORAGE_DISABLED = 'tt:disabled';
 
+  /* ---------------- Info / tooltip system ----------------
+   * Each editor field gets an (i) icon. On hover/focus we show a floating
+   * tooltip with a short description and a tiny SVG mock-up of the Twitch
+   * UI where the affected region is highlighted, so users can see at a glance
+   * what the option actually changes.
+   */
+
+  /** Build a small Twitch-like layout SVG with one or more regions highlighted. */
+  function svgLayout(opts) {
+    opts = opts || {};
+    const highlight = opts.highlight || 'page';
+    const accent = opts.accent || '#9147ff';
+    // Region fills (default vs highlighted).
+    const dim = '#1f1f23';
+    const dim2 = '#26262c';
+    const text = opts.text || '#efeff1';
+    const link = opts.link || accent;
+    const hlBody = highlight === 'body' || highlight === 'page' || highlight === 'all';
+    const hlBase = highlight === 'base' || highlight === 'all';
+    const hlAlt = highlight === 'alt' || highlight === 'all';
+    const hlAlt2 = highlight === 'alt2' || highlight === 'all';
+    const hlTopbar = highlight === 'topbar' || highlight === 'all';
+    const hlSidebar = highlight === 'sidebar' || highlight === 'all';
+    const hlChat = highlight === 'chat' || highlight === 'all';
+    const hlButton = highlight === 'button' || highlight === 'accent';
+    const hlBorder = highlight === 'border';
+    const hlText = highlight === 'text';
+    const hlTextAlt = highlight === 'textAlt';
+    const hlLink = highlight === 'link';
+    // Body/page bg fill.
+    let bodyFill = hlBody ? (opts.bodyFill || accent) : '#0e0e10';
+    if (opts.bodyImage) bodyFill = `url(#bgPattern)`;
+    // Borders.
+    const borderColor = hlBorder ? accent : '#2c2c33';
+    return [
+      '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">',
+      '<defs>',
+      `<pattern id="bgPattern" width="24" height="24" patternUnits="userSpaceOnUse">`,
+      `<rect width="24" height="24" fill="${accent}" opacity="0.85"/>`,
+      `<circle cx="12" cy="12" r="6" fill="#fff" opacity="0.18"/>`,
+      `</pattern>`,
+      '</defs>',
+      // body
+      `<rect x="0" y="0" width="240" height="140" fill="${bodyFill}"/>`,
+      // top bar
+      `<rect x="0" y="0" width="240" height="16" fill="${hlTopbar ? accent : '#18181b'}" stroke="${borderColor}" stroke-width="${hlBorder ? 1 : 0}"/>`,
+      // sidebar
+      `<rect x="0" y="16" width="36" height="124" fill="${hlSidebar ? accent : '#18181b'}" stroke="${borderColor}" stroke-width="${hlBorder ? 1 : 0}"/>`,
+      // chat panel
+      `<rect x="180" y="16" width="60" height="124" fill="${hlChat ? accent : '#18181b'}" stroke="${borderColor}" stroke-width="${hlBorder ? 1 : 0}"/>`,
+      // main content area card (base)
+      `<rect x="44" y="22" width="130" height="70" rx="4" fill="${hlBase ? accent : dim}" stroke="${borderColor}" stroke-width="${hlBorder ? 1 : 0}"/>`,
+      // sub-card alt
+      `<rect x="44" y="98" width="62" height="34" rx="4" fill="${hlAlt ? accent : dim2}" stroke="${borderColor}" stroke-width="${hlBorder ? 1 : 0}"/>`,
+      `<rect x="112" y="98" width="62" height="34" rx="4" fill="${hlAlt2 ? accent : dim2}" stroke="${borderColor}" stroke-width="${hlBorder ? 1 : 0}"/>`,
+      // sidebar items
+      `<circle cx="18" cy="30" r="5" fill="${hlSidebar ? '#fff' : '#3a3a40'}"/>`,
+      `<circle cx="18" cy="46" r="5" fill="#3a3a40"/>`,
+      `<circle cx="18" cy="62" r="5" fill="#3a3a40"/>`,
+      // top bar logo
+      `<circle cx="10" cy="8" r="3" fill="#9147ff"/>`,
+      // primary button (Follow / Subscribe)
+      `<rect x="148" y="4" width="40" height="10" rx="3" fill="${hlButton ? accent : '#9147ff'}"/>`,
+      // text lines on main card
+      `<rect x="50" y="30" width="70" height="4" rx="2" fill="${hlText ? text : (hlTextAlt ? '#adadb8' : '#dadada')}"/>`,
+      `<rect x="50" y="40" width="100" height="3" rx="1.5" fill="${hlTextAlt ? '#adadb8' : (hlText ? text : '#5a5a60')}" opacity="${hlTextAlt ? 1 : 0.7}"/>`,
+      `<rect x="50" y="48" width="40" height="3" rx="1.5" fill="${hlLink ? link : '#5a5a60'}"/>`,
+      // chat lines
+      ...(opts.chatLines || []).map((line, i) => {
+        const y = 22 + i * 12;
+        const rx = line.radius || 0;
+        const bg = line.bg;
+        const tc = line.color || '#dadada';
+        const fs = line.fontSize || 4;
+        const glow = line.glow ? `filter="url(#glow)"` : '';
+        return [
+          bg ? `<rect x="184" y="${y - 2}" width="52" height="${fs + 4}" rx="${rx}" fill="${bg}" ${glow}/>` : '',
+          `<rect x="186" y="${y}" width="40" height="${fs}" rx="1" fill="${tc}"/>`
+        ].join('');
+      }),
+      opts.chatGlow ? `<defs><filter id="glow"><feGaussianBlur stdDeviation="1.4"/></filter></defs>` : '',
+      '</svg>'
+    ].flat().join('');
+  }
+
+  /** Default chat preview lines. */
+  function defaultChatLines(overrides) {
+    overrides = overrides || {};
+    return [
+      Object.assign({ color: '#9147ff', fontSize: 4 }, overrides),
+      Object.assign({ color: '#dadada', fontSize: 4 }, overrides),
+      Object.assign({ color: '#dadada', fontSize: 4 }, overrides),
+      Object.assign({ color: '#dadada', fontSize: 4 }, overrides),
+      Object.assign({ color: '#dadada', fontSize: 4 }, overrides)
+    ];
+  }
+
+  /** Info dictionary keyed by data-info value. Each entry returns title + description + svg illustration. */
+  const INFO = {
+    // Base colour vars
+    'var:body': () => ({
+      title: 'Фон тела (body)',
+      desc: 'Главный фон страницы за всем содержимым (то, что видно по краям и под прозрачными карточками).',
+      svg: svgLayout({ highlight: 'body' })
+    }),
+    'var:base': () => ({
+      title: 'Фон базы (карточки)',
+      desc: 'Основной фон карточек, плеера, разделов чата и др. больших панелей контента.',
+      svg: svgLayout({ highlight: 'base' })
+    }),
+    'var:alt': () => ({
+      title: 'Фон alt',
+      desc: 'Альтернативный фон — используется в подкарточках, стримах в категориях, всплывающих блоках.',
+      svg: svgLayout({ highlight: 'alt' })
+    }),
+    'var:alt2': () => ({
+      title: 'Фон alt-2',
+      desc: 'Самый «глубокий» фон под alt — для разделителей, нижних блоков и тёмных подложек.',
+      svg: svgLayout({ highlight: 'alt2' })
+    }),
+    'var:text': () => ({
+      title: 'Цвет текста',
+      desc: 'Основной цвет всех текстов — заголовков, описаний, сообщений в чате.',
+      svg: svgLayout({ highlight: 'text' })
+    }),
+    'var:textAlt': () => ({
+      title: 'Текст alt',
+      desc: 'Цвет вторичного текста — подписей, времени, второстепенных деталей.',
+      svg: svgLayout({ highlight: 'textAlt' })
+    }),
+    'var:link': () => ({
+      title: 'Ссылки и ники',
+      desc: 'Цвет ссылок и имён пользователей — там, где Twitch обычно использует фиолетовый.',
+      svg: svgLayout({ highlight: 'link' })
+    }),
+    'var:border': () => ({
+      title: 'Граница',
+      desc: 'Цвет тонких рамок: вокруг карточек, инпутов, кнопок и разделителей.',
+      svg: svgLayout({ highlight: 'border' })
+    }),
+    'var:button': () => ({
+      title: 'Кнопка primary',
+      desc: 'Цвет основных кнопок Twitch (Follow, Subscribe и т.п.).',
+      svg: svgLayout({ highlight: 'button' })
+    }),
+    'var:accent': () => ({
+      title: 'Акцент расширения',
+      desc: 'Дополнительный акцентный цвет: используется для важных кнопок (Follow), ссылок, ников и эффекта свечения чата.',
+      svg: svgLayout({ highlight: 'accent' })
+    }),
+
+    // Background layer regions (used both for the section headers and per-field).
+    'region:page': () => ({
+      title: 'Фон сайта',
+      desc: 'Картинка / гифка / цвет, который рисуется поверх всей страницы под чатом и контентом.',
+      svg: svgLayout({ highlight: 'page', bodyImage: true })
+    }),
+    'region:chat': () => ({
+      title: 'Фон чата',
+      desc: 'Заполняет правую панель чата своим фоном (картинка, гифка, цвет, градиент).',
+      svg: svgLayout({ highlight: 'chat' })
+    }),
+    'region:sidebar': () => ({
+      title: 'Фон левой панели',
+      desc: 'Применяется к боковой панели слева (список каналов, рекомендации).',
+      svg: svgLayout({ highlight: 'sidebar' })
+    }),
+    'region:topbar': () => ({
+      title: 'Фон верхней панели',
+      desc: 'Применяется к верхней навигационной панели Twitch (логотип, поиск, профиль).',
+      svg: svgLayout({ highlight: 'topbar' })
+    }),
+
+    // Per-field hints inside layer form (region-aware).
+    'layer:enabled': (region) => ({
+      title: 'Включить слой',
+      desc: 'Главный выключатель для этого фона. Если выключено — слой вообще не рисуется.',
+      svg: svgLayout({ highlight: region })
+    }),
+    'layer:type': () => ({
+      title: 'Тип фона',
+      desc: 'Что использовать в качестве фона: однотонный цвет, CSS-градиент или загруженная картинка/GIF.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="8" y="20" width="60" height="100" rx="6" fill="#9147ff"/>' +
+        '<rect x="90" y="20" width="60" height="100" rx="6" fill="url(#g)"/>' +
+        '<rect x="172" y="20" width="60" height="100" rx="6" fill="url(#p2)"/>' +
+        '<text x="38" y="135" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">color</text>' +
+        '<text x="120" y="135" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">gradient</text>' +
+        '<text x="202" y="135" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">image</text>' +
+        '<defs>' +
+        '<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9147ff"/><stop offset="1" stop-color="#ff36c8"/></linearGradient>' +
+        '<pattern id="p2" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#1f6feb"/><circle cx="8" cy="8" r="4" fill="#fff" opacity="0.4"/></pattern>' +
+        '</defs>' +
+        '</svg>'
+    }),
+    'layer:color': () => ({
+      title: 'Цвет фона',
+      desc: 'Сплошной цвет, заливающий выбранную область. Работает только когда «Тип» = color.',
+      svg: '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="20" width="200" height="100" rx="8" fill="#9147ff"/></svg>'
+    }),
+    'layer:gradient': () => ({
+      title: 'CSS-градиент',
+      desc: 'Любой валидный CSS-градиент: linear-gradient(135deg,#9147ff,#ff36c8) и т.п. Берётся, когда «Тип» = gradient.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><linearGradient id="gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9147ff"/><stop offset="0.5" stop-color="#ff36c8"/><stop offset="1" stop-color="#1f6feb"/></linearGradient></defs>' +
+        '<rect x="20" y="20" width="200" height="100" rx="8" fill="url(#gr)"/>' +
+        '</svg>'
+    }),
+    'layer:image': () => ({
+      title: 'Картинка / GIF',
+      desc: 'Загрузи картинку или GIF (или укажи URL). Файл встроится прямо в тему как data-URL и будет работать офлайн.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="20" y="20" width="200" height="100" rx="8" fill="#1a1a1f" stroke="#2c2c33"/>' +
+        '<circle cx="60" cy="55" r="12" fill="#ffd56b"/>' +
+        '<polygon points="30,110 90,60 130,90 180,40 220,110" fill="#9147ff" opacity="0.85"/>' +
+        '<polygon points="30,110 90,60 130,90 180,40 220,110" fill="#ff36c8" opacity="0.4"/>' +
+        '</svg>'
+    }),
+    'layer:size': () => ({
+      title: 'Размер фона',
+      desc: 'cover — заполняет всю область без полей. contain — вписывает целиком (могут быть поля). auto — реальный размер. растянуть — на 100%×100%.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="6" y="20" width="108" height="50" rx="4" fill="#1a1a1f" stroke="#2c2c33"/>' +
+        '<rect x="6" y="20" width="108" height="50" fill="url(#imgC)"/>' +
+        '<text x="60" y="82" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">cover</text>' +
+        '<rect x="126" y="20" width="108" height="50" rx="4" fill="#1a1a1f" stroke="#2c2c33"/>' +
+        '<rect x="152" y="30" width="56" height="30" fill="url(#imgC)"/>' +
+        '<text x="180" y="82" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">contain</text>' +
+        '<rect x="6" y="90" width="108" height="40" rx="4" fill="#1a1a1f" stroke="#2c2c33"/>' +
+        '<rect x="6" y="90" width="108" height="40" fill="url(#imgC)" preserveAspectRatio="none"/>' +
+        '<text x="60" y="126" fill="#fff" font-size="9" text-anchor="middle" font-family="sans-serif">stretch</text>' +
+        '<defs><linearGradient id="imgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9147ff"/><stop offset="1" stop-color="#ff36c8"/></linearGradient></defs>' +
+        '</svg>'
+    }),
+    'layer:repeat': () => ({
+      title: 'Повтор',
+      desc: 'no-repeat — одна копия. repeat — заполнить плиткой в обоих направлениях. repeat-x / repeat-y — только по одной оси.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><pattern id="tt" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#1a1a1f"/><circle cx="12" cy="12" r="6" fill="#9147ff"/></pattern></defs>' +
+        '<rect x="6" y="10" width="108" height="50" rx="4" fill="url(#tt)"/>' +
+        '<text x="60" y="75" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">repeat</text>' +
+        '<rect x="126" y="10" width="108" height="50" rx="4" fill="#1a1a1f"/>' +
+        '<circle cx="180" cy="35" r="12" fill="#9147ff"/>' +
+        '<text x="180" y="75" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">no-repeat</text>' +
+        '</svg>'
+    }),
+    'layer:positionX': () => ({
+      title: 'Позиция X',
+      desc: 'Горизонтальная позиция картинки в %. 0 — слева, 50 — по центру, 100 — справа. Полезно когда фон не помещается.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="20" y="20" width="200" height="80" rx="6" fill="#1a1a1f" stroke="#2c2c33"/>' +
+        '<circle cx="60" cy="60" r="18" fill="#9147ff" opacity="0.7"/>' +
+        '<circle cx="180" cy="60" r="18" fill="#9147ff"/>' +
+        '<path d="M70 60 L170 60" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 3"/>' +
+        '<polygon points="170,55 180,60 170,65" fill="#fff"/>' +
+        '<text x="120" y="125" fill="#adadb8" font-size="10" text-anchor="middle" font-family="sans-serif">сдвиг по горизонтали</text>' +
+        '</svg>'
+    }),
+    'layer:positionY': () => ({
+      title: 'Позиция Y',
+      desc: 'Вертикальная позиция картинки в %. 0 — сверху, 50 — по центру, 100 — снизу.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="60" y="10" width="120" height="120" rx="6" fill="#1a1a1f" stroke="#2c2c33"/>' +
+        '<circle cx="120" cy="30" r="14" fill="#9147ff" opacity="0.7"/>' +
+        '<circle cx="120" cy="110" r="14" fill="#9147ff"/>' +
+        '<path d="M120 44 L120 95" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 3"/>' +
+        '<polygon points="115,95 120,108 125,95" fill="#fff"/>' +
+        '</svg>'
+    }),
+    'layer:opacity': () => ({
+      title: 'Прозрачность',
+      desc: 'Прозрачность всего слоя: 1 — полностью видно, 0 — полностью невидно.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="10" y="30" width="220" height="60" fill="#0e0e10"/>' +
+        '<rect x="10" y="30" width="55" height="60" fill="#9147ff" opacity="0.2"/>' +
+        '<rect x="65" y="30" width="55" height="60" fill="#9147ff" opacity="0.5"/>' +
+        '<rect x="120" y="30" width="55" height="60" fill="#9147ff" opacity="0.8"/>' +
+        '<rect x="175" y="30" width="55" height="60" fill="#9147ff" opacity="1"/>' +
+        '<text x="38" y="108" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">0.2</text>' +
+        '<text x="92" y="108" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">0.5</text>' +
+        '<text x="148" y="108" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">0.8</text>' +
+        '<text x="203" y="108" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">1.0</text>' +
+        '</svg>'
+    }),
+    'layer:blur': () => ({
+      title: 'Размытие (blur)',
+      desc: 'Гауссово размытие фона в пикселях. Делает картинку «мягкой» — удобно, когда фон отвлекает от текста.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><filter id="b1"><feGaussianBlur stdDeviation="0"/></filter><filter id="b2"><feGaussianBlur stdDeviation="3"/></filter><filter id="b3"><feGaussianBlur stdDeviation="7"/></filter></defs>' +
+        '<rect x="10" y="30" width="70" height="70" rx="6" fill="#9147ff" filter="url(#b1)"/>' +
+        '<rect x="85" y="30" width="70" height="70" rx="6" fill="#9147ff" filter="url(#b2)"/>' +
+        '<rect x="160" y="30" width="70" height="70" rx="6" fill="#9147ff" filter="url(#b3)"/>' +
+        '<text x="45" y="118" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">0px</text>' +
+        '<text x="120" y="118" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">3px</text>' +
+        '<text x="195" y="118" fill="#adadb8" font-size="9" text-anchor="middle" font-family="sans-serif">7px</text>' +
+        '</svg>'
+    }),
+
+    // Chat
+    'chat:messageBgColor': () => ({
+      title: 'Фон сообщения',
+      desc: 'Заливка под каждым сообщением чата. Полезна вместе со скруглением углов — получаются «пузырьки».',
+      svg: svgLayout({
+        highlight: 'none',
+        chatLines: [
+          { color: '#fff', bg: '#9147ff', radius: 3, fontSize: 4 },
+          { color: '#fff', bg: '#9147ff', radius: 3, fontSize: 4 },
+          { color: '#fff', bg: '#9147ff', radius: 3, fontSize: 4 },
+          { color: '#fff', bg: '#9147ff', radius: 3, fontSize: 4 }
+        ]
+      })
+    }),
+    'chat:textColor': () => ({
+      title: 'Цвет текста чата',
+      desc: 'Цвет, которым печатаются буквы в сообщениях.',
+      svg: svgLayout({
+        highlight: 'none',
+        chatLines: [
+          { color: '#9147ff', fontSize: 4 },
+          { color: '#9147ff', fontSize: 4 },
+          { color: '#9147ff', fontSize: 4 },
+          { color: '#9147ff', fontSize: 4 }
+        ]
+      })
+    }),
+    'chat:fontFamily': () => ({
+      title: 'Шрифт чата',
+      desc: 'Любой CSS font-family. Работает только если такой шрифт установлен в системе.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="0" y="0" width="240" height="140" fill="#0e0e10"/>' +
+        '<text x="16" y="38" fill="#dadada" font-size="15" font-family="serif">Aa Серифный</text>' +
+        '<text x="16" y="68" fill="#dadada" font-size="15" font-family="sans-serif">Aa Без засечек</text>' +
+        '<text x="16" y="98" fill="#dadada" font-size="15" font-family="monospace">Aa Моноширинный</text>' +
+        '<text x="16" y="126" fill="#9147ff" font-size="15" font-family="cursive">Aa Курсивный</text>' +
+        '</svg>'
+    }),
+    'chat:fontSize': () => ({
+      title: 'Размер шрифта',
+      desc: 'Размер букв в сообщениях, в пикселях. 0 — оставить как у Twitch.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="0" y="0" width="240" height="140" fill="#18181b"/>' +
+        '<text x="16" y="30" fill="#dadada" font-size="10" font-family="sans-serif">10px — мелко</text>' +
+        '<text x="16" y="58" fill="#dadada" font-size="14" font-family="sans-serif">14px — норм</text>' +
+        '<text x="16" y="92" fill="#dadada" font-size="20" font-family="sans-serif">20px — крупно</text>' +
+        '<text x="16" y="128" fill="#9147ff" font-size="26" font-family="sans-serif">26px — XXL</text>' +
+        '</svg>'
+    }),
+    'chat:borderRadius': () => ({
+      title: 'Скругление углов',
+      desc: 'Радиус скругления углов сообщений в пикселях. Большое значение = «облачка».',
+      svg: svgLayout({
+        highlight: 'none',
+        chatLines: [
+          { color: '#fff', bg: '#9147ff', radius: 0, fontSize: 4 },
+          { color: '#fff', bg: '#9147ff', radius: 2, fontSize: 4 },
+          { color: '#fff', bg: '#9147ff', radius: 6, fontSize: 4 },
+          { color: '#fff', bg: '#9147ff', radius: 12, fontSize: 4 }
+        ]
+      })
+    }),
+    'chat:outline': () => ({
+      title: 'Обводка текста',
+      desc: 'Чёрная обводка вокруг букв — повышает читаемость на ярком фоне.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><linearGradient id="og" x1="0" x2="1"><stop offset="0" stop-color="#9147ff"/><stop offset="1" stop-color="#ff36c8"/></linearGradient></defs>' +
+        '<rect width="240" height="140" fill="url(#og)"/>' +
+        '<text x="120" y="55" fill="#fff" font-size="22" font-weight="700" text-anchor="middle" font-family="sans-serif">Без обводки</text>' +
+        '<text x="120" y="105" fill="#fff" stroke="#000" stroke-width="2" font-size="22" font-weight="700" text-anchor="middle" font-family="sans-serif">С обводкой</text>' +
+        '</svg>'
+    }),
+
+    // Effects
+    'fx:chatGlow': () => ({
+      title: 'Свечение чата',
+      desc: 'Каждое сообщение чата получает мягкое свечение акцентного цвета. Хорошо смотрится на тёмных темах.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><filter id="glw" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>' +
+        '<rect width="240" height="140" fill="#0e0e10"/>' +
+        '<g>' +
+        '<rect x="30" y="20" width="180" height="18" rx="6" fill="#9147ff" filter="url(#glw)" opacity="0.65"/>' +
+        '<rect x="30" y="20" width="180" height="18" rx="6" fill="#1f1f23"/>' +
+        '<text x="40" y="32" fill="#dadada" font-size="9" font-family="sans-serif">Hello chat</text>' +
+        '</g>' +
+        '<g transform="translate(0,30)">' +
+        '<rect x="30" y="20" width="180" height="18" rx="6" fill="#9147ff" filter="url(#glw)" opacity="0.65"/>' +
+        '<rect x="30" y="20" width="180" height="18" rx="6" fill="#1f1f23"/>' +
+        '<text x="40" y="32" fill="#dadada" font-size="9" font-family="sans-serif">Glow effect demo</text>' +
+        '</g>' +
+        '<g transform="translate(0,60)">' +
+        '<rect x="30" y="20" width="180" height="18" rx="6" fill="#9147ff" filter="url(#glw)" opacity="0.65"/>' +
+        '<rect x="30" y="20" width="180" height="18" rx="6" fill="#1f1f23"/>' +
+        '<text x="40" y="32" fill="#dadada" font-size="9" font-family="sans-serif">PogChamp</text>' +
+        '</g>' +
+        '</svg>'
+    }),
+    'fx:roundedUI': () => ({
+      title: 'Скруглить весь UI',
+      desc: 'Делает большие радиусы у всех кнопок, инпутов, плеера и панелей чата.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect width="240" height="140" fill="#18181b"/>' +
+        '<rect x="20" y="22" width="90" height="30" rx="2" fill="#9147ff"/>' +
+        '<rect x="130" y="22" width="90" height="30" rx="14" fill="#9147ff"/>' +
+        '<rect x="20" y="66" width="90" height="54" rx="4" fill="#1f1f23" stroke="#2c2c33"/>' +
+        '<rect x="130" y="66" width="90" height="54" rx="18" fill="#1f1f23" stroke="#2c2c33"/>' +
+        '<text x="65" y="43" fill="#fff" font-size="10" text-anchor="middle" font-family="sans-serif">прямые</text>' +
+        '<text x="175" y="43" fill="#fff" font-size="10" text-anchor="middle" font-family="sans-serif">скруглённые</text>' +
+        '</svg>'
+    }),
+
+    // Custom CSS
+    'customCSS': () => ({
+      title: 'Кастомный CSS',
+      desc: 'Любой CSS-код, который добавится к теме. Здесь можно тонко поправить любой селектор Twitch.',
+      svg:
+        '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect width="240" height="140" fill="#0e0e10"/>' +
+        '<text x="12" y="24" fill="#9147ff" font-size="10" font-family="monospace">.chat-line__message {</text>' +
+        '<text x="22" y="40" fill="#ff36c8" font-size="10" font-family="monospace">color</text>' +
+        '<text x="56" y="40" fill="#dadada" font-size="10" font-family="monospace">: #fff;</text>' +
+        '<text x="22" y="56" fill="#ff36c8" font-size="10" font-family="monospace">background</text>' +
+        '<text x="86" y="56" fill="#dadada" font-size="10" font-family="monospace">: #9147ff;</text>' +
+        '<text x="22" y="72" fill="#ff36c8" font-size="10" font-family="monospace">border-radius</text>' +
+        '<text x="104" y="72" fill="#dadada" font-size="10" font-family="monospace">: 12px;</text>' +
+        '<text x="12" y="88" fill="#9147ff" font-size="10" font-family="monospace">}</text>' +
+        '<text x="12" y="118" fill="#adadb8" font-size="9" font-family="sans-serif">+ всё, что захочешь поправить</text>' +
+        '</svg>'
+    })
+  };
+
+  /* ---------------- Tooltip helpers ---------------- */
+  const tooltipEl = document.getElementById('info-tooltip');
+  let activeInfoBtn = null;
+
+  function infoEntry(key, region) {
+    const fn = INFO[key];
+    if (typeof fn === 'function') return fn(region);
+    return null;
+  }
+
+  function showTooltipFor(btn) {
+    if (!btn) return;
+    const key = btn.dataset.infoKey;
+    const region = btn.dataset.infoRegion || '';
+    const entry = infoEntry(key, region);
+    if (!entry) return;
+    activeInfoBtn = btn;
+    tooltipEl.innerHTML =
+      `<div class="tt-title"></div>` +
+      `<div class="tt-desc"></div>` +
+      `<div class="tt-illu">${entry.svg || ''}</div>` +
+      `<span class="tt-arrow"></span>`;
+    tooltipEl.querySelector('.tt-title').textContent = entry.title || '';
+    tooltipEl.querySelector('.tt-desc').textContent = entry.desc || '';
+    tooltipEl.classList.add('show');
+    tooltipEl.setAttribute('aria-hidden', 'false');
+    positionTooltip(btn);
+  }
+  function hideTooltip(forBtn) {
+    if (forBtn && forBtn !== activeInfoBtn) return;
+    activeInfoBtn = null;
+    tooltipEl.classList.remove('show');
+    tooltipEl.setAttribute('aria-hidden', 'true');
+  }
+  function positionTooltip(btn) {
+    const r = btn.getBoundingClientRect();
+    const tw = 260; // matches CSS width
+    const margin = 8;
+    // Prefer right-side; if not enough room, place left; if too close to bottom, flip up.
+    let left = r.right + margin;
+    let arrow = 'left';
+    if (left + tw + 4 > window.innerWidth) {
+      left = r.left - tw - margin;
+      arrow = 'right';
+      if (left < 4) {
+        left = Math.max(4, Math.min(window.innerWidth - tw - 4, r.left));
+        arrow = 'top';
+      }
+    }
+    tooltipEl.style.left = left + 'px';
+    // Provisional top — measure after to clamp.
+    let top = r.top - 4;
+    tooltipEl.style.top = top + 'px';
+    const th = tooltipEl.offsetHeight;
+    if (top + th + 4 > window.innerHeight) top = window.innerHeight - th - 4;
+    if (top < 4) top = 4;
+    tooltipEl.style.top = top + 'px';
+    tooltipEl.dataset.arrow = arrow;
+  }
+
+  /** Create an (i) button and wire hover/focus to show tooltip. */
+  function makeInfoBtn(key, region) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'info-btn';
+    b.textContent = 'i';
+    b.title = 'Показать что меняет этот пункт';
+    b.setAttribute('aria-label', 'Что меняет этот пункт');
+    b.dataset.infoKey = key;
+    if (region) b.dataset.infoRegion = region;
+    b.tabIndex = 0;
+    b.addEventListener('mouseenter', () => showTooltipFor(b));
+    b.addEventListener('mouseleave', () => hideTooltip(b));
+    b.addEventListener('focus', () => showTooltipFor(b));
+    b.addEventListener('blur', () => hideTooltip(b));
+    b.addEventListener('click', (e) => {
+      // Sticky: clicking toggles tooltip; prevents the surrounding label
+      // from forwarding the click to the underlying input (which would
+      // open colour pickers, etc).
+      e.preventDefault();
+      e.stopPropagation();
+      if (activeInfoBtn === b) hideTooltip(b);
+      else showTooltipFor(b);
+    });
+    return b;
+  }
+
+  /** Walk every editor element with [data-info] and inject (i) buttons. */
+  function injectInfoIcons() {
+    document.querySelectorAll('[data-info]').forEach((el) => {
+      if (el.dataset.infoBound) return;
+      el.dataset.infoBound = '1';
+      const key = el.dataset.info;
+      const region = el.dataset.infoRegion || el.closest('[data-region]')?.dataset.region || '';
+      // Place (i) right after the .lab span if present, otherwise prepend.
+      const lab = el.querySelector(':scope > .lab');
+      const btn = makeInfoBtn(key, region);
+      if (lab) lab.appendChild(btn);
+      else el.insertBefore(btn, el.firstChild);
+    });
+    // Section summaries (Фон сайта/чата/левой панели/верхней панели) get an (i) too.
+    document.querySelectorAll('details > div[data-region]').forEach((div) => {
+      const summary = div.parentElement && div.parentElement.querySelector(':scope > summary');
+      if (!summary || summary.dataset.infoBound) return;
+      summary.dataset.infoBound = '1';
+      summary.appendChild(makeInfoBtn('region:' + div.dataset.region));
+    });
+  }
+
+  // Hide tooltip on scroll/resize/click outside.
+  document.addEventListener('scroll', () => hideTooltip(), true);
+  window.addEventListener('resize', () => hideTooltip());
+  document.addEventListener('click', (e) => {
+    if (activeInfoBtn && !activeInfoBtn.contains(e.target)) hideTooltip();
+  });
+
   /* ---------------- Storage helpers ---------------- */
   const storage = {
     get(keys) {
@@ -186,13 +745,22 @@
     if (t) t.click();
   }
 
-  /* ---------------- Apply/Save ---------------- */
-  async function applyTheme(theme, kind) {
+  /* ---------------- Apply/Save ----------------
+   * Writes the active payload + (optionally) updated customs in a single
+   * chrome.storage.local.set call so the content script never observes a
+   * half-applied state where tt:active references a custom theme that's not
+   * yet in tt:customs (which previously caused backgrounds to silently fail).
+   */
+  async function applyTheme(theme, kind, opts) {
+    opts = opts || {};
     let payload;
     if (kind === 'preset') payload = { kind: 'preset', id: theme.id };
     else if (kind === 'custom') payload = { kind: 'custom', id: theme.id };
     else payload = { kind: 'inline', theme };
-    await storage.set({ [STORAGE_ACTIVE]: payload, [STORAGE_DISABLED]: false });
+    const writes = { [STORAGE_ACTIVE]: payload, [STORAGE_DISABLED]: false };
+    if (opts.persistCustoms) writes[STORAGE_CUSTOMS] = state.customs;
+    await storage.set(writes);
+    state.activeRef = payload;
     document.getElementById('theme-toggle').checked = true;
     await sendToTwitch({ type: 'tt:apply' });
     toast(`Применена: ${theme.name}`);
@@ -359,26 +927,32 @@
 
   /* Build layer form HTML for each background slot. */
   function buildLayerForm(container, key) {
+    const region = container.dataset.region || '';
     container.innerHTML = `
       <div class="layer-form">
-        <label class="full"><input type="checkbox" data-field="enabled" /> Включить</label>
-        <label>Тип
+        <label class="full" data-info="layer:enabled" data-info-region="${region}">
+          <span class="lab">Включить слой</span>
+          <input type="checkbox" data-field="enabled" />
+        </label>
+        <label data-info="layer:type">
+          <span class="lab">Тип</span>
           <select data-field="type">
             <option value="color">Сплошной цвет</option>
             <option value="gradient">Градиент</option>
             <option value="image">Картинка / GIF</option>
           </select>
         </label>
-        <label>Цвет<input type="color" data-field="color" /></label>
-        <label class="full">Градиент CSS<input type="text" data-field="gradient" placeholder="linear-gradient(135deg,#9147ff,#ff36c8)" /></label>
-        <div class="full layer-image-row">
+        <label data-info="layer:color"><span class="lab">Цвет</span><input type="color" data-field="color" /></label>
+        <label class="full" data-info="layer:gradient"><span class="lab">Градиент CSS</span><input type="text" data-field="gradient" placeholder="linear-gradient(135deg,#9147ff,#ff36c8)" /></label>
+        <div class="full layer-image-row" data-info="layer:image">
           <div class="layer-image-thumb" data-thumb></div>
           <button class="btn" data-action="upload">Загрузить картинку/GIF</button>
           <button class="btn-ghost" data-action="url">URL</button>
           <button class="btn-ghost" data-action="clear">Удалить</button>
           <input type="file" accept="image/*" hidden data-file />
         </div>
-        <label>Размер
+        <label data-info="layer:size">
+          <span class="lab">Размер</span>
           <select data-field="size">
             <option value="cover">cover (заполняет)</option>
             <option value="contain">contain (вписывает)</option>
@@ -386,7 +960,8 @@
             <option value="100% 100%">растянуть</option>
           </select>
         </label>
-        <label>Повтор
+        <label data-info="layer:repeat">
+          <span class="lab">Повтор</span>
           <select data-field="repeat">
             <option value="no-repeat">no-repeat</option>
             <option value="repeat">repeat</option>
@@ -394,13 +969,21 @@
             <option value="repeat-y">repeat-y</option>
           </select>
         </label>
-        <label>Позиция X (%) <input type="range" data-field="positionX" min="0" max="100" step="1" /></label>
-        <label>Позиция Y (%) <input type="range" data-field="positionY" min="0" max="100" step="1" /></label>
-        <label>Прозрачность <input type="range" data-field="opacity" min="0" max="1" step="0.05" /></label>
-        <label>Размытие (px) <input type="range" data-field="blur" min="0" max="40" step="1" /></label>
+        <label data-info="layer:positionX"><span class="lab">Позиция X<span class="range-val" data-rv="positionX">50%</span></span><input type="range" data-field="positionX" min="0" max="100" step="1" /></label>
+        <label data-info="layer:positionY"><span class="lab">Позиция Y<span class="range-val" data-rv="positionY">50%</span></span><input type="range" data-field="positionY" min="0" max="100" step="1" /></label>
+        <label data-info="layer:opacity"><span class="lab">Прозрачность<span class="range-val" data-rv="opacity">1.0</span></span><input type="range" data-field="opacity" min="0" max="1" step="0.05" /></label>
+        <label data-info="layer:blur"><span class="lab">Размытие<span class="range-val" data-rv="blur">0px</span></span><input type="range" data-field="blur" min="0" max="40" step="1" /></label>
       </div>
     `;
     const layer = state.editor[key];
+
+    function setRangeVal(name, value) {
+      const el = container.querySelector(`[data-rv="${name}"]`);
+      if (!el) return;
+      if (name === 'opacity') el.textContent = Number(value).toFixed(2);
+      else if (name === 'blur') el.textContent = `${Number(value) | 0}px`;
+      else el.textContent = `${Number(value) | 0}%`;
+    }
 
     function refresh() {
       container.querySelector('[data-field="enabled"]').checked = !!layer.enabled;
@@ -412,8 +995,14 @@
       const pos = parsePos(layer.position);
       container.querySelector('[data-field="positionX"]').value = pos.x;
       container.querySelector('[data-field="positionY"]').value = pos.y;
-      container.querySelector('[data-field="opacity"]').value = typeof layer.opacity === 'number' ? layer.opacity : 1;
-      container.querySelector('[data-field="blur"]').value = layer.blur || 0;
+      const op = typeof layer.opacity === 'number' ? layer.opacity : 1;
+      container.querySelector('[data-field="opacity"]').value = op;
+      const bl = layer.blur || 0;
+      container.querySelector('[data-field="blur"]').value = bl;
+      setRangeVal('positionX', pos.x);
+      setRangeVal('positionY', pos.y);
+      setRangeVal('opacity', op);
+      setRangeVal('blur', bl);
       const thumb = container.querySelector('[data-thumb]');
       if (layer.image) thumb.style.background = `url("${layer.image}") center/cover`;
       else thumb.style.background = '#222';
@@ -423,11 +1012,15 @@
       input.addEventListener('input', () => {
         const f = input.dataset.field;
         if (f === 'enabled') layer.enabled = input.checked;
-        else if (f === 'opacity' || f === 'blur') layer[f] = parseFloat(input.value);
-        else if (f === 'positionX' || f === 'positionY') {
+        else if (f === 'opacity' || f === 'blur') {
+          layer[f] = parseFloat(input.value);
+          setRangeVal(f, layer[f]);
+        } else if (f === 'positionX' || f === 'positionY') {
           const x = container.querySelector('[data-field="positionX"]').value;
           const y = container.querySelector('[data-field="positionY"]').value;
           layer.position = `${x}% ${y}%`;
+          setRangeVal('positionX', x);
+          setRangeVal('positionY', y);
         } else {
           layer[f] = input.value;
         }
@@ -519,6 +1112,9 @@
       const div = document.querySelector(`[data-layer="${k}"]`);
       if (div) buildLayerForm(div, k);
     });
+    // Layer forms are rebuilt every time the editor loads a theme, so the
+    // newly-created [data-info] labels need their (i) buttons re-attached.
+    injectInfoIcons();
   }
 
   /* Wire up scalar editor inputs. */
@@ -574,7 +1170,9 @@
     loadIntoEditor(copy);
   });
 
-  document.getElementById('ed-save').addEventListener('click', async () => {
+  /** Save the editor's current state into customs and persist to storage.
+   *  Returns the saved (cloned) theme. */
+  async function saveCurrentEditor() {
     const t = JSON.parse(JSON.stringify(state.editor));
     t.category = 'custom';
     if (!t.name || !t.name.trim()) t.name = 'Без названия';
@@ -582,16 +1180,21 @@
     if (idx >= 0) state.customs[idx] = t;
     else state.customs.push(t);
     await storage.set({ [STORAGE_CUSTOMS]: state.customs });
+    return t;
+  }
+
+  document.getElementById('ed-save').addEventListener('click', async () => {
+    await saveCurrentEditor();
     renderCustoms();
     toast('Тема сохранена');
   });
 
   document.getElementById('ed-apply').addEventListener('click', async () => {
-    // Save first to get a stable id.
-    document.getElementById('ed-save').click();
-    // Then apply as inline to be safe (works even if save was async).
-    const t = JSON.parse(JSON.stringify(state.editor));
-    await applyTheme(t, 'custom');
+    // 1) Persist editor → customs (so the id resolves on the content side).
+    // 2) Atomically write tt:active + tt:customs in a single set so the
+    //    content script never sees a stale customs list.
+    const t = await saveCurrentEditor();
+    await applyTheme(t, 'custom', { persistCustoms: true });
   });
 
   document.getElementById('ed-export').addEventListener('click', () => {
@@ -623,5 +1226,6 @@
     syncEditorUI();
     renderPresets();
     renderCustoms();
+    injectInfoIcons();
   })();
 })();
